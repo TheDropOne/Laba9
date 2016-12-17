@@ -7,7 +7,7 @@ public class Task {
 
     public Task(String buffer) {
         this.buffer = buffer;
-        this.time = buffer.length();
+        this.time = (int) (buffer.length()*1e3);
     }
 
     public String getBuffer() {
