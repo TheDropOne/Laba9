@@ -1,7 +1,5 @@
 import java.io.*;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.WatchService;
+import java.nio.file.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -29,9 +27,10 @@ import java.util.List;
 public class Runner {
 
     public static boolean isReady = false;
+    private static final String INPUT_FILENAME = "input.txt";
 
     public static void main(String[] args) {
-        File inputFile = new File("input.txt");
+        File inputFile = new File(INPUT_FILENAME);
         File outputFile = new File("output.txt");
         List<Printer> printers = new ArrayList<>();
         printers.addAll(Arrays.asList(new Printer(), new Printer()));
@@ -39,15 +38,19 @@ public class Runner {
         try {
             FileWriter fw = new FileWriter(outputFile);
             List<Task> taskList = readListOfStrings(inputFile);
-            Path inputPath = Paths.get(inputFile.getAbsolutePath());
-            WatchService watchService = inputPath.getFileSystem().newWatchService();
-            //inputPath.register(watchService,
-            //       StandardWatchEventKinds.ENTRY_MODIFY);
+
+            Path inputPath = Paths.get(inputFile.getAbsolutePath().replace(File.separator + INPUT_FILENAME, ""));
+            WatchService watchService = FileSystems.getDefault().newWatchService();
+            inputPath.register(watchService,
+                    StandardWatchEventKinds.ENTRY_MODIFY);
+            WatchKey key = watchService.take();
             for (int i = 0; i < printers.size(); i++) {
                 printers.get(i).start();
             }
-            for (int i = 0; i < taskList.size(); i++) {
+            int taskListSize = taskList.size();
+            for (int i = 0; i < taskListSize; i++) {
                 boolean taskAdded = false;
+                taskListSize = taskList.size();
                 do {
                     for (int j = 0; j < printers.size(); j++) {
                         if (!printers.get(j).isBusy()) {
@@ -58,6 +61,24 @@ public class Runner {
                         }
                     }
                 } while (!taskAdded);
+                for (WatchEvent<?> event : key.pollEvents()) {
+                    WatchEvent.Kind<?> kind = event.kind();
+
+                    @SuppressWarnings("unchecked")
+                    WatchEvent<Path> ev = (WatchEvent<Path>) event;
+                    Path fileName = ev.context();
+                    if (kind == StandardWatchEventKinds.ENTRY_MODIFY && fileName.toString().equals(INPUT_FILENAME)) {
+                        List<Task> tempList = readListOfStrings(inputFile);
+                        //i -= (tempList.size() - taskList.size());
+                        taskList.clear();
+                        taskList.addAll(tempList);
+                        System.out.println("Input file has changed!!!");
+                    }
+                }
+                boolean valid = key.reset();
+                if (!valid) {
+                    break;
+                }
             }
             fw.close();
             isReady = true;

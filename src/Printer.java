@@ -34,7 +34,7 @@ public class Printer extends Thread {
             while (!Runner.isReady) {
                 if (currentTask == null) {
                     do {
-                        System.out.println(this + "Ama free, waiting");
+                        //System.out.println(this + "Ama free, waiting");
                         this.sleep(500);
                     } while (currentTask == null);
                 }
